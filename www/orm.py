@@ -15,6 +15,7 @@ def log(sql, args=()):
 
 async def create_pool(loop, **kw):
     logging.info('create database connection pool....')
+    print("create database connection pool....")
     global __pool
     __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
@@ -82,27 +83,27 @@ class Field(object):
 
 class StringField(Field):
     def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
-        super.__init__(name, primary_key, default)
+        super().__init__(name, ddl, primary_key, default)
 
 
 class BooleanField(Field):
     def __init__(self, name=None, default=False):
-        super.__init__(name, 'boolean', False, default)
+        super().__init__(name, 'boolean', False, default)
 
 
 class IntegerField(Field):
     def __init__(self, name=None, primary_key=False, default=0):
-        super.__init__(name, 'bigint', primary_key, default)
+        super().__init__(name, 'bigint', primary_key, default)
 
 
 class FloatField(Field):
     def __init__(self, name=None, primary_key=False, default=0.0):
-        super.__init__(name, 'real', primary_key, default)
+        super().__init__(name, 'real', primary_key, default)
 
 
 class TextField(Field):
     def __init__(self, name=None, default=None):
-        super.__init__(name, 'text', False, default)
+        super().__init__(name, 'text', False, default)
 
 
 class ModelMetaclass(type):
@@ -112,12 +113,15 @@ class ModelMetaclass(type):
             return type.__new__(cls, name, bases, attrs)
         tableName = attrs.get('__table__', None) or name
         logging.info('found model:%s (table: %s)' % (name, tableName))
+        print('found model:%s (table: %s)' % (name, tableName))
         mappings = dict()
         fields = []
         primarykey = None
-        for k, v in attrs.item():
+
+        for k, v in attrs.items():
             if isinstance(v, Field):
                 logging.info('  found mapping: %s ==> %s' % (k, v))
+                print('  found mapping: %s ==> %s' % (k, v))
                 mappings[k] = v
                 if v.primary_key:
                     if primarykey:
@@ -133,12 +137,12 @@ class ModelMetaclass(type):
         attrs['__mappings__'] = mappings
         attrs['__table＿'] = tableName
         attrs['__primary_key＿'] = primarykey
-        attrs['__fields＿'] = fields
+        attrs['__fields__'] = fields
         attrs['__select＿'] = 'select `%s`,%s from `%s`' % (primarykey, ', '.join(escaped_fields), tableName)
         attrs['__insert＿'] = 'insert into `%s` (%s, `%s`) values (%s)' % (
-        tableName, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))
+            tableName, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))
         attrs['__update＿'] = 'update `%s` set %s where `%s`=?' % (
-        tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primarykey)
+            tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primarykey)
         attrs['__delete＿'] = 'delete from `%s` where `%s`=?' % (tableName, primarykey)
         return type.__new__(cls, name, bases, attrs)
 
@@ -149,10 +153,10 @@ class Model(dict, metaclass=ModelMetaclass):
         super(Model, self).__init__(**kw)
 
     def __getattr__(self, key):
-        try:
+      #  try:
             return self[key]
-        except KeyError:
-            raise AttributeError(r"`Model` object has no attribute `%s`" % key)
+       # except KeyError:
+        #    raise AttributeError(r"`Model` object has no attribute `%s`" % key)
 
     def __setattr__(self, key, value):
         self[key] = value
@@ -218,6 +222,7 @@ class Model(dict, metaclass=ModelMetaclass):
         return cls(**rs[0])
 
     async def save(self):
+
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
         rows = await execute(self.__insert__, args)
@@ -225,7 +230,7 @@ class Model(dict, metaclass=ModelMetaclass):
             logging.warning('failed to insert record: affected rows: %s' % rows)
 
     async def update(self):
-        args = list(map(self.getValue, self.__fields__))
+        args = list(map(self.getValue, self.__fields＿))
         args.append(self.getValue(self.__primary_key__))
         rows = await execute(self.__update__, args)
         if rows != 1:
@@ -236,3 +241,6 @@ class Model(dict, metaclass=ModelMetaclass):
         rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warning('failed to remove by primary key: affected rows: %s' % rows)
+
+
+
